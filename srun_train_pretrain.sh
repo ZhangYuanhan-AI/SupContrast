@@ -6,7 +6,7 @@ currenttime=`date "+%Y%m%d_%H%M%S"`
 
 
 
-for folderid in 1 2 3
+for folderid in 0 1 2 3
 do
     for seed in 0
     do

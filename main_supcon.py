@@ -110,7 +110,7 @@ def parse_option():
         opt.model_name = '{}_cosine'.format(opt.model_name)
 
     if opt.pretrain:
-        opt.model_name = '{}_pretrain'.format(opt.model_name)
+        opt.model_name = '{}_pretrain-r50'.format(opt.model_name)
 
     # warm-up for large-batch training,
     if opt.batch_size > 256:
@@ -190,7 +190,9 @@ def set_model(opt):
     model = SupConResNet(name=opt.model)
 
     if opt.pretrain:
-        model.load_state_dict(torch.load('/mnt/lustre/yhzhang/SupContrast/weights/supcon.pth',map_location=torch.device('cpu'))['model_ema'])
+        # import pdb;pdb.set_trace()
+        model.encoder.load_state_dict(torch.load('/mnt/lustre/yhzhang/weights/resnet/resnet50_a1_0-14fe96d1.pth'), strict=False)
+        # model.load_state_dict(torch.load('/mnt/lustre/yhzhang/SupContrast/weights/supcon.pth',map_location=torch.device('cpu'))['model_ema'])
       
     criterion = RetriverConLoss(temperature=opt.temp)
     # criterion = SupConLoss(temperature=opt.temp)

@@ -14,8 +14,10 @@ from torchvision import transforms, datasets
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
-from networks.resnet_big import SupConResNet
-from losses import SupConLoss
+from networks.resnet import SupConResNet
+from losses import SupConLoss, RetriverConLoss
+from dataset import contrastive_dataset
+import numpy as np
 
 try:
     import apex
@@ -27,9 +29,9 @@ except ImportError:
 def parse_option():
     parser = argparse.ArgumentParser('argument for training')
 
-    parser.add_argument('--print_freq', type=int, default=10,
+    parser.add_argument('--print_freq', type=int, default=5,
                         help='print frequency')
-    parser.add_argument('--save_freq', type=int, default=50,
+    parser.add_argument('--save_freq', type=int, default=100,
                         help='save frequency')
     parser.add_argument('--batch_size', type=int, default=256,
                         help='batch_size')
@@ -37,6 +39,7 @@ def parse_option():
                         help='num of workers to use')
     parser.add_argument('--epochs', type=int, default=1000,
                         help='number of training epochs')
+    parser.add_argument('--seed', type=int, default=0)
 
     # optimization
     parser.add_argument('--learning_rate', type=float, default=0.05,
@@ -54,10 +57,13 @@ def parse_option():
     parser.add_argument('--model', type=str, default='resnet50')
     parser.add_argument('--dataset', type=str, default='cifar10',
                         choices=['cifar10', 'cifar100', 'path'], help='dataset')
-    parser.add_argument('--mean', type=str, help='mean of dataset in path in form of str tuple')
-    parser.add_argument('--std', type=str, help='std of dataset in path in form of str tuple')
-    parser.add_argument('--data_folder', type=str, default=None, help='path to custom dataset')
-    parser.add_argument('--size', type=int, default=32, help='parameter for RandomResizedCrop')
+    parser.add_argument('--mean', type=str, default='(0.485, 0.456, 0.406)', help='mean of dataset in path in form of str tuple')
+    parser.add_argument('--std', type=str, default='(0.229, 0.224, 0.225)', help='std of dataset in path in form of str tuple')
+    parser.add_argument('--data_folder', type=str, default='/mnt/lustre/share/yhzhang/pascal-5i/VOC2012/JPEGImages', help='path to custom dataset')
+    parser.add_argument('--meta', type=str, default='fold0.txt', help='path to meta file')
+    parser.add_argument('--folder_id', type=int, default=0, help='path to meta file')
+    parser.add_argument('--size', type=int, default=224, help='parameter for RandomResizedCrop')
+    parser.add_argument('--pretrain', action='store_true', help='load official imagenet pre-trained')
 
     # method
     parser.add_argument('--method', type=str, default='SupCon',
@@ -96,12 +102,15 @@ def parse_option():
     for it in iterations:
         opt.lr_decay_epochs.append(int(it))
 
-    opt.model_name = '{}_{}_{}_lr_{}_decay_{}_bsz_{}_temp_{}_trial_{}'.\
-        format(opt.method, opt.dataset, opt.model, opt.learning_rate,
-               opt.weight_decay, opt.batch_size, opt.temp, opt.trial)
+    opt.model_name = '{}_{}_{}_folder_{}_seed_{}_lr_{}_decay_{}_cropsz_{}_bsz_{}_temp_{}_trial_{}'.\
+        format(opt.method, opt.dataset, opt.model, opt.folder_id, opt.seed, opt.learning_rate,
+               opt.weight_decay, opt.size, opt.batch_size, opt.temp, opt.trial)
 
     if opt.cosine:
         opt.model_name = '{}_cosine'.format(opt.model_name)
+
+    if opt.pretrain:
+        opt.model_name = '{}_pretrain'.format(opt.model_name)
 
     # warm-up for large-batch training,
     if opt.batch_size > 256:
@@ -163,8 +172,8 @@ def set_loader(opt):
                                           transform=TwoCropTransform(train_transform),
                                           download=True)
     elif opt.dataset == 'path':
-        train_dataset = datasets.ImageFolder(root=opt.data_folder,
-                                            transform=TwoCropTransform(train_transform))
+        train_dataset = contrastive_dataset(img_root=opt.data_folder, meta=opt.meta, folder_id=opt.folder_id,
+                                            transform=train_transform)
     else:
         raise ValueError(opt.dataset)
 
@@ -177,8 +186,14 @@ def set_loader(opt):
 
 
 def set_model(opt):
+  
     model = SupConResNet(name=opt.model)
-    criterion = SupConLoss(temperature=opt.temp)
+
+    if opt.pretrain:
+        model.load_state_dict(torch.load('/mnt/lustre/yhzhang/SupContrast/weights/supcon.pth',map_location=torch.device('cpu'))['model_ema'])
+      
+    criterion = RetriverConLoss(temperature=opt.temp)
+    # criterion = SupConLoss(temperature=opt.temp)
 
     # enable synchronized Batch Normalization
     if opt.syncBN:
@@ -203,24 +218,25 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     losses = AverageMeter()
 
     end = time.time()
-    for idx, (images, labels) in enumerate(train_loader):
+    for idx, (images) in enumerate(train_loader):
         data_time.update(time.time() - end)
-
-        images = torch.cat([images[0], images[1]], dim=0)
+        # import pdb;pdb.set_trace()
+        bsz = images[0].shape[0]
+        images = torch.cat([images[0], images[1], images[2]], dim=0)
         if torch.cuda.is_available():
             images = images.cuda(non_blocking=True)
-            labels = labels.cuda(non_blocking=True)
-        bsz = labels.shape[0]
 
         # warm-up learning rate
         warmup_learning_rate(opt, epoch, idx, len(train_loader), optimizer)
 
         # compute loss
         features = model(images)
-        f1, f2 = torch.split(features, [bsz, bsz], dim=0)
-        features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
+        # import pdb;pdb.set_trace()
+        f1, f2, f3 = torch.split(features, [bsz, bsz, bsz], dim=0)
+        features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1), f3.unsqueeze(1)], dim=1)
+        # import pdb;pdb.set_trace()
         if opt.method == 'SupCon':
-            loss = criterion(features, labels)
+            loss = criterion(features, labels=None)
         elif opt.method == 'SimCLR':
             loss = criterion(features)
         else:
@@ -252,8 +268,7 @@ def train(train_loader, model, criterion, optimizer, epoch, opt):
     return losses.avg
 
 
-def main():
-    opt = parse_option()
+def main(opt):
 
     # build data loader
     train_loader = set_loader(opt)
@@ -293,4 +308,15 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    opt = parse_option()
+    print(opt)
+    seed = opt.seed
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    main(opt)
+
+
+
+
+
+    

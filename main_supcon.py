@@ -110,7 +110,7 @@ def parse_option():
         opt.model_name = '{}_cosine'.format(opt.model_name)
 
     if opt.pretrain:
-        opt.model_name = '{}_pretrain-r50'.format(opt.model_name)
+        opt.model_name = '{}_pretrain-vit'.format(opt.model_name)
 
     # warm-up for large-batch training,
     if opt.batch_size > 256:

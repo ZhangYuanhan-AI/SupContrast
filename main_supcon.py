@@ -14,7 +14,9 @@ from torchvision import transforms, datasets
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
+from networks.vit import SupVit
 from networks.resnet import SupConResNet
+
 from losses import SupConLoss, RetriverConLoss
 from dataset import contrastive_dataset
 import numpy as np
@@ -54,7 +56,7 @@ def parse_option():
                         help='momentum')
 
     # model dataset
-    parser.add_argument('--model', type=str, default='resnet50')
+    parser.add_argument('--model', type=str, default= 'vit_large_patch14_224_clip_laion2b')
     parser.add_argument('--dataset', type=str, default='cifar10',
                         choices=['cifar10', 'cifar100', 'path'], help='dataset')
     parser.add_argument('--mean', type=str, default='(0.485, 0.456, 0.406)', help='mean of dataset in path in form of str tuple')
@@ -187,11 +189,11 @@ def set_loader(opt):
 
 def set_model(opt):
   
-    model = SupConResNet(name=opt.model)
+    model = SupVit(name=opt.model)
 
-    if opt.pretrain:
+    # if opt.pretrain:
         # import pdb;pdb.set_trace()
-        model.encoder.load_state_dict(torch.load('/mnt/lustre/yhzhang/weights/resnet/resnet50_a1_0-14fe96d1.pth'), strict=False)
+        # model.encoder.load_state_dict(torch.load('/mnt/lustre/yhzhang/weights/resnet/resnet50_a1_0-14fe96d1.pth'), strict=False)
         # model.load_state_dict(torch.load('/mnt/lustre/yhzhang/SupContrast/weights/supcon.pth',map_location=torch.device('cpu'))['model_ema'])
       
     criterion = RetriverConLoss(temperature=opt.temp)

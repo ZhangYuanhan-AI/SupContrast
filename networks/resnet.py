@@ -39,6 +39,7 @@ class SupConResNet(nn.Module):
                 'head not supported: {}'.format(head))
 
     def forward(self, x):
+        import pdb;pdb.set_trace()
         feat = self.encoder(x)
         feat = F.normalize(self.head(feat), dim=1)
         return feat

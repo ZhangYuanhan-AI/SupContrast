@@ -12,19 +12,23 @@ import torch.nn.functional as F
 import timm
 
 
-model_dict = {
-    'resnet18': 512,
-    'resnet34': 512,
-    'resnet50': 2048,
-    'resnet101': 2048,
-}
+# from timm.models import VisionTransformer
+
+# model_dict = {
+#     'resnet18': 512,
+#     'resnet34': 512,
+#     'resnet50': 2048,
+#     'resnet101': 2048,
+# }
+
 
 class SupVit(nn.Module):
     """backbone + projection head"""
     def __init__(self, name='resnet50', head='mlp', feat_dim=128):
-        super(SupConResNet, self).__init__()
-        self.encoder = timm.create_model('vit_large_patch14_224_clip_laion2b', pretrained=True)
-        dim_in = model_dict[name]
+        super(SupVit, self).__init__()
+        self.encoder = timm.create_model(name, pretrained=True)
+        self.encoder.reset_classifier(num_classes = 0)
+        dim_in = 1024 #model_dict[name]
         # self.encoder = model_fun()
         if head == 'linear':
             self.head = nn.Linear(dim_in, feat_dim)
@@ -39,8 +43,10 @@ class SupVit(nn.Module):
                 'head not supported: {}'.format(head))
 
     def forward(self, x):
-        feat = model.forward_features(x)
-        feat = model.forward_head(feat,pre_logits=True)
+        feat = self.encoder(x)
+        # import pdb;pdb.set_trace()
+        # feat = self.encoder.module.forward_features(x)
+        # feat = self.encoder.module.forward_head(feat,pre_logits=True)
         feat = F.normalize(self.head(feat), dim=1)
         return feat
 

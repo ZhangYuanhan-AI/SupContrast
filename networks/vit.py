@@ -45,6 +45,10 @@ class SupVit(nn.Module):
             raise NotImplementedError(
                 'head not supported: {}'.format(head))
 
+    def freeze_stages(self):
+        self.encoder.requires_grad_(False)
+        self.encoder.eval()
+
     def forward(self, x):
         feat = self.encoder(x)
         # import pdb;pdb.set_trace()
@@ -60,11 +64,15 @@ class SupVit_no_added_head(nn.Module):
         super(SupVit_no_added_head, self).__init__()
         self.encoder = timm.create_model(name, pretrained=True)
         #freeze model
-        submodules = [n for n, _ in self.encoder.named_children()]
-        self._freeze_stages(submodules.index('head'))
+        self.freeze_stages()
 
         for name, module in self.encoder.named_parameters():
             print(name, module.requires_grad)
+
+    def freeze_stages(self):
+        submodules = [n for n, _ in self.encoder.named_children()]
+        self._freeze_stages(submodules.index('head'))
+
 
     def _freeze_stages(self, idx):
         self.encoder.cls_token.requires_grad_(False)

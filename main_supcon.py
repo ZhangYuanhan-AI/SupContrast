@@ -112,7 +112,7 @@ def parse_option():
         opt.model_name = '{}_cosine'.format(opt.model_name)
 
     if opt.pretrain:
-        opt.model_name = '{}_pretrain-vit-freeze-encoder-noadded'.format(opt.model_name)
+        opt.model_name = '{}_pretrain-vit-freeze-encoder-noadded-eval'.format(opt.model_name)
 
     # warm-up for large-batch training,
     if opt.batch_size > 256:
@@ -216,8 +216,9 @@ def set_model(opt):
 def train(train_loader, model, criterion, optimizer, epoch, opt):
     """one epoch training"""
     model.train()
-    #freeze mode, can be comment with timm.freeze function
-    # model.encoder.eval()
+    #freeze mode,
+    model.freeze_stages()
+    
 
     batch_time = AverageMeter()
     data_time = AverageMeter()

@@ -66,7 +66,7 @@ def parse_option():
     parser.add_argument('--folder_id', type=int, default=0, help='path to meta file')
     parser.add_argument('--size', type=int, default=224, help='parameter for RandomResizedCrop')
     parser.add_argument('--pretrain', action='store_true', help='load official imagenet pre-trained')
-    parser.add_argument('--feat_dim', type=int, default=128, help='feat dim'))
+    parser.add_argument('--feat_dim', type=int, default=128, help='feat dim')
 
     # method
     parser.add_argument('--method', type=str, default='SupCon',

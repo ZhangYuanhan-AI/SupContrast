@@ -58,42 +58,7 @@ class SupVit(nn.Module):
         return feat
 
 
-class SupVit_no_added_head(nn.Module):
-    """backbone + projection head"""
-    def __init__(self, name='resnet50', head='mlp', feat_dim=128):
-        super(SupVit_no_added_head, self).__init__()
-        self.encoder = timm.create_model(name, pretrained=True)
-        #freeze model
-        self.freeze_stages()
 
-        for name, module in self.encoder.named_parameters():
-            print(name, module.requires_grad)
-
-    def freeze_stages(self):
-        submodules = [n for n, _ in self.encoder.named_children()]
-        self._freeze_stages(submodules.index('head'))
-
-
-    def _freeze_stages(self, idx):
-        self.encoder.cls_token.requires_grad_(False)
-        self.encoder.pos_embed.requires_grad_(False)
-
-        for cur_idx, (_, cur_module) in enumerate(self.encoder.named_children()):
-            if cur_idx == idx:
-                return
-            cur_idx += 1
-            cur_module.requires_grad_(False)
-            cur_module.eval()
-
-
-
-    def forward(self, x):
-        feat = self.encoder(x)
-        # import pdb;pdb.set_trace()
-        # feat = self.encoder.module.forward_features(x)
-        # feat = self.encoder.module.forward_head(feat,pre_logits=True)
-        feat = F.normalize(feat, dim=1)
-        return feat
 
 
 class SupCEResNet(nn.Module):

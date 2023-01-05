@@ -14,7 +14,7 @@ from torchvision import transforms, datasets
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
-from networks.vit import SupVit, SupVit_no_added_head
+from networks.vit import SupVit
 from networks.resnet import SupConResNet
 
 from losses import SupConLoss, RetriverConLoss
@@ -56,7 +56,7 @@ def parse_option():
                         help='momentum')
 
     # model dataset
-    parser.add_argument('--model', type=str, default= 'vit_large_patch14_224_clip_laion2b')
+    parser.add_argument('--model', type=str, default= 'vit_large_patch14_clip_224.laion2b')
     parser.add_argument('--dataset', type=str, default='cifar10',
                         choices=['cifar10', 'cifar100', 'path'], help='dataset')
     parser.add_argument('--mean', type=str, default='(0.485, 0.456, 0.406)', help='mean of dataset in path in form of str tuple')
@@ -66,6 +66,7 @@ def parse_option():
     parser.add_argument('--folder_id', type=int, default=0, help='path to meta file')
     parser.add_argument('--size', type=int, default=224, help='parameter for RandomResizedCrop')
     parser.add_argument('--pretrain', action='store_true', help='load official imagenet pre-trained')
+    parser.add_argument('--feat_dim', type=int, default=128, help='feat dim'))
 
     # method
     parser.add_argument('--method', type=str, default='SupCon',
@@ -104,15 +105,15 @@ def parse_option():
     for it in iterations:
         opt.lr_decay_epochs.append(int(it))
 
-    opt.model_name = '{}_{}_{}_folder_{}_seed_{}_lr_{}_decay_{}_cropsz_{}_bsz_{}_temp_{}_trial_{}'.\
+    opt.model_name = '{}_{}_{}_folder_{}_seed_{}_lr_{}_decay_{}_cropsz_{}_bsz_{}_featdim_{}_temp_{}_trial_{}'.\
         format(opt.method, opt.dataset, opt.model, opt.folder_id, opt.seed, opt.learning_rate,
-               opt.weight_decay, opt.size, opt.batch_size, opt.temp, opt.trial)
+               opt.weight_decay, opt.size, opt.batch_size, opt.feat_dim, opt.temp, opt.trial)
 
     if opt.cosine:
         opt.model_name = '{}_cosine'.format(opt.model_name)
 
     if opt.pretrain:
-        opt.model_name = '{}_pretrain-vit-freeze-encoder-noadded-eval'.format(opt.model_name)
+        opt.model_name = '{}_pretrain-vit-freeze-encoder'.format(opt.model_name)
 
     # warm-up for large-batch training,
     if opt.batch_size > 256:
@@ -189,7 +190,7 @@ def set_loader(opt):
 
 def set_model(opt):
   
-    model = SupVit_no_added_head(name=opt.model)
+    model = SupVit(name=opt.model, feat_dim=opt.feat_dim)
 
     # if opt.pretrain:
         # import pdb;pdb.set_trace()

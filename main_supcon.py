@@ -14,7 +14,7 @@ from torchvision import transforms, datasets
 from util import TwoCropTransform, AverageMeter
 from util import adjust_learning_rate, warmup_learning_rate
 from util import set_optimizer, save_model
-from networks.vit import SupVit
+from networks.vit import SupVit, SupVit_no_added_head
 from networks.resnet import SupConResNet
 
 from losses import SupConLoss, RetriverConLoss
@@ -112,7 +112,7 @@ def parse_option():
         opt.model_name = '{}_cosine'.format(opt.model_name)
 
     if opt.pretrain:
-        opt.model_name = '{}_pretrain-vit'.format(opt.model_name)
+        opt.model_name = '{}_pretrain-vit-freeze-encoder-noadded'.format(opt.model_name)
 
     # warm-up for large-batch training,
     if opt.batch_size > 256:
@@ -189,7 +189,7 @@ def set_loader(opt):
 
 def set_model(opt):
   
-    model = SupVit(name=opt.model)
+    model = SupVit_no_added_head(name=opt.model)
 
     # if opt.pretrain:
         # import pdb;pdb.set_trace()
@@ -216,6 +216,8 @@ def set_model(opt):
 def train(train_loader, model, criterion, optimizer, epoch, opt):
     """one epoch training"""
     model.train()
+    #freeze mode, can be comment with timm.freeze function
+    # model.encoder.eval()
 
     batch_time = AverageMeter()
     data_time = AverageMeter()

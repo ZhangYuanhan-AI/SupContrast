@@ -28,10 +28,10 @@ class contrastive_dataset(data.Dataset):
         self.img_root = img_root
         self.classes = set()
         self.folder_id = folder_id
-        meta = 'fold_leaveout%d.txt' % (folder_id)
+        meta = 'fold%d.txt' % (folder_id)
 
         contrastive_samples_root = '/mnt/lustre/yhzhang/visual_prompting/evaluate/output_seg_images/'
-        contrastive_samples_path = os.path.join(contrastive_samples_root, 'output_vit-laion2b-trn_crossval_%d_0/contrastive.json' % (folder_id))
+        contrastive_samples_path = os.path.join(contrastive_samples_root, 'output_vit-laion2b-clip_trn_%d_0/contrastive.json' % (folder_id))
 
         with open(contrastive_samples_path) as f:
             self.contrastive_samples = json.load(f)

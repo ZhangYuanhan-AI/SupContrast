@@ -136,3 +136,5 @@ save/
 #yhzhang
 weights/
 datasets/
+srun_train_pretrain_eva.sh
+srun_train_pretrain_vit.sh
